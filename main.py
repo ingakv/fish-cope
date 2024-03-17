@@ -1,67 +1,105 @@
+import os
+import xml.etree.ElementTree as ET
+import zipfile
+from PIL import Image, ImageDraw
 
-from matplotlib import pyplot as plt
-import numpy as np
-import cv2
+annotation_folder = "../ANADROM/Annotation/"
 
-# Read the RGB image
-rgbImage = cv2.imread('fuck_you.png')[:, :, :3]
+annotations_data = []
 
-# Reshape the RGB image for matrix multiplication
-rgbImageReshaped = np.reshape(np.double(rgbImage), (-1, 3)).T
-
-# Convert RGB to YCbCr using matrix operations
-conversionMatrix = np.array([[0.299, 0.587, 0.114],
-                             [-0.147, -0.289, 0.436],
-                             [0.615, -0.515, -0.1]])
-
-offsets = np.array([0, 128, 128]).reshape(-1, 1)
-
-# Apply the conversion matrix and reshape the result back to the image dimensions
-image = np.dot(conversionMatrix, rgbImageReshaped) + offsets
-customYcbcrImage = np.reshape(image.T, rgbImage.shape)
+temp_path = 'temp/'
+modified_image_path = 'modified_images/'
 
 
-# Separate the Y, Cb, and Cr channels
-yChannel = customYcbcrImage[:, :, 0]
-cbChannel = customYcbcrImage[:, :, 1]
-crChannel = customYcbcrImage[:, :, 2]
 
 
-# Convert RGB to HSV using the function
-# Separate the H, S, and V channels
-image = cv2.cvtColor(rgbImage, cv2.COLOR_BGR2HSV)
-customHsvImage = np.reshape(image, rgbImage.shape)
+# Extract Data from XML Files
+for zip_file in os.listdir(annotation_folder):
+    if zip_file.endswith(".zip"):
 
-hue = customHsvImage[:, :, 0]
-saturation = customHsvImage[:, :, 1]
-value = customHsvImage[:, :, 2]
+        try:
+            # Open the zip file in read mode
+            with zipfile.ZipFile(os.path.join(annotation_folder, zip_file), 'r') as zip_ref:
 
-row = 3
-col = 4
+                # Filter file_list to include only files named "annotation.xml"
+                file = [file for file in zip_ref.namelist() if os.path.basename(file) == "annotations.xml"][0]
 
-# Display:
-plt.figure()
+                # Extract the file to a temporary location
+                zip_ref.extract(file, temp_path)
 
-# The converted HSV and YCbCr images
+                tree = ET.parse(os.path.join(temp_path, file))
+                root = tree.getroot()
+                for track in root.findall("./track"):
+                    species = track.get("label")
+                    for box in track.findall("./box"):
+                        frame_number = int(box.get("frame"))
+                        coordinates = [float(box.get(attr)) for attr in ["xtl", "ytl", "xbr", "ybr"]]
 
-plt.subplot(row, col, col + 1), plt.imshow(np.uint8(customYcbcrImage)), plt.title('Converted YCbCr Image')
-plt.subplot(row, col, 2 * col + 1), plt.imshow(customHsvImage), plt.title('Converted HSV Image')
+                        # Save data about frames which contains fish
+                        annotations_data.append((zip_file, frame_number, species, coordinates))
 
-# The separated YCbCr channels
-plt.subplot(row, col, col + 2), plt.imshow(np.uint8(yChannel)), plt.title('Y Channel')
-plt.subplot(row, col, col + 3), plt.imshow(np.uint8(cbChannel)), plt.title('Cb Channel')
-plt.subplot(row, col, col + 4), plt.imshow(np.uint8(crChannel)), plt.title('Cr Channel')
+                # Remove the extracted file after processing
+                os.remove(temp_path + file)
 
-# The separated HSV channels
-plt.subplot(row, col, 2 * col + 2), plt.imshow(hue), plt.title('Hue')
-plt.subplot(row, col, 2 * col + 3), plt.imshow(saturation), plt.title('Saturation')
-plt.subplot(row, col, 2 * col + 4), plt.imshow(value), plt.title('Value')
 
-# The original RGB image
-plt.subplot(row, col, 2), plt.imshow(rgbImage), plt.title('Original RGB Image')
 
-# The YCbCr image that was converted using the built-in function
-(plt.subplot(row, col, 3), plt.imshow(cv2.cvtColor(rgbImage, cv2.COLOR_BGR2YCrCb)),
-    plt.title('Converted YCbCr Image using built-in function'))
 
-plt.show()
+        except Exception as e:
+            print(f"An error occurred: {e}")
+
+
+
+
+
+
+
+# Read Image Data and Overlay Annotations
+for annotation in annotations_data:
+
+    zip_path, frame_number, species, (xtl, ytl, xbr, ybr) = annotation
+
+    image_path = os.path.join(annotation_folder, zip_path)
+
+    try:
+        # Open the zip file in read mode
+        with zipfile.ZipFile(image_path, 'r') as zip_ref:
+
+            # Get the file from the zip
+            file_list = [file for file in zip_ref.namelist() if os.path.basename(file) == f"frame_{frame_number:06d}.PNG"]
+
+            if len(file_list) > 1:
+                print(f"Error: More than one file found for {image_path}")
+
+            image_file = file_list[0]
+
+
+            # Extract the file to a temporary location
+            zip_ref.extract(image_file, temp_path)
+
+            if os.path.exists(temp_path + image_file):
+
+                # Draw the box around the fish
+                image = Image.open(temp_path + image_file)
+                draw = ImageDraw.Draw(image)
+                draw.rectangle([(xtl, ytl), (xbr, ybr)], outline="red")
+
+                # Save the modified image with annotations
+                slay = zip_path.removeprefix("task_fish_detection-")
+                slay2 = zip_path.removesuffix("-")
+
+
+                annotated_image_path = modified_image_path + f"frame_{frame_number:06d}-" + zip_path.split('-')[1] + ".png"
+
+                image.save(annotated_image_path)
+
+            # Remove the extracted file after processing
+            os.remove(temp_path + image_file)
+
+
+    except Exception as e:
+        print(f"An error occurred: {e}")
+
+
+
+# Step 3: Analysis and Insights
+# You can analyze patterns, behavior, and other insights based on the visualized annotations.
