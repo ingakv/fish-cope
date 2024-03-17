@@ -62,7 +62,7 @@ for annotation in annotations_data:
 
     try:
         # Open the zip file in read mode
-        with zipfile.ZipFile(image_path, 'r') as zip_ref:
+        with (zipfile.ZipFile(image_path, 'r') as zip_ref):
 
             # Get the file from the zip
             file_list = [file for file in zip_ref.namelist() if os.path.basename(file) == f"frame_{frame_number:06d}.PNG"]
@@ -84,11 +84,19 @@ for annotation in annotations_data:
                 draw.rectangle([(xtl, ytl), (xbr, ybr)], outline="red")
 
                 # Save the modified image with annotations
-                slay = zip_path.removeprefix("task_fish_detection-")
-                slay2 = zip_path.removesuffix("-")
+                modifier = 0
+                annotated_image_path = modified_image_path + f"frame_{frame_number:06d}-{zip_path.split('-')[1]}.png"
 
+                while os.path.exists(annotated_image_path):
 
-                annotated_image_path = modified_image_path + f"frame_{frame_number:06d}-" + zip_path.split('-')[1] + ".png"
+                    modifier += 1
+
+                    annotated_image_path = annotated_image_path.removesuffix(".png")
+
+                    annotated_image_path = annotated_image_path.removesuffix(f"({modifier-1})")
+
+                    annotated_image_path += f"({modifier}).png"
+
 
                 image.save(annotated_image_path)
 
