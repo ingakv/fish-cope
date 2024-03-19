@@ -1,9 +1,13 @@
+import itertools
 import os
 import xml.etree.ElementTree as ET
 import zipfile
 from PIL import Image, ImageDraw
 
-annotation_folder = "../ANADROM/Annotation/"
+#annotation_folder = "../ANADROM/Annotation/"
+
+# Test folder with a small subset of the original footage
+annotation_folder = "test_images/"
 
 annotations_data = []
 species_data = []
@@ -13,6 +17,8 @@ modified_image_path = 'modified_images/'
 
 
 
+
+temp_annotations_data = []
 
 # Extract Data from XML Files
 for zip_file in os.listdir(annotation_folder):
@@ -50,16 +56,26 @@ for zip_file in os.listdir(annotation_folder):
                         coordinates = [float(box.get(attr)) for attr in ["xtl", "ytl", "xbr", "ybr"]]
 
                         # Save data about frames which contains fish
-                        annotations_data.append((zip_file, frame_number, species, coordinates))
+                        temp_annotations_data.append((frame_number, species, coordinates))
 
                 # Remove the extracted file after processing
                 os.remove(temp_path + file)
+
+                # Sort the data based on frame number
+                temp_annotations_data = sorted(temp_annotations_data, key=lambda x: x[0])
+
+                # Group annotations_data by frame number, and add it to annotations_data
+                for (frame, group) in itertools.groupby(temp_annotations_data, key=lambda x: x[0]):
+                    annotations_data.append((zip_file, frame, list(group)))
+
+                temp_annotations_data.clear()
+
 
 
 
 
         except Exception as e:
-            print(f"An error occurred: {e}")
+            print(f"Error: {e}")
 
 
 
@@ -72,7 +88,7 @@ for annotation in annotations_data:
 
     all_species = []
 
-    zip_path, frame_number, species, (xtl, ytl, xbr, ybr) = annotation
+    zip_path, frame_number, fish_group = annotation
 
     # Add all the species and their box color in the current xml
     for elem in species_data:
@@ -102,24 +118,26 @@ for annotation in annotations_data:
             zip_ref.extract(image_file, temp_path)
 
             if os.path.exists(temp_path + image_file):
-
-                # Draw the box around the fish
                 image = Image.open(temp_path + image_file)
-                draw = ImageDraw.Draw(image)
 
-                # Default to None if the species is not found
-                species_color = None
+                for _, species, (xtl, ytl, xbr, ybr) in fish_group:
 
-                for s, c in all_species:
-                    if s.text == species:
-                        species_color = c
-                        break
+                    # Draw the box around the fish
+                    draw = ImageDraw.Draw(image)
 
-                if species_color is None:
-                    print(f"Error: No color found for {species}")
+                    # Default to None if the species is not found
+                    species_color = None
+
+                    for s, c in all_species:
+                        if s.text == species:
+                            species_color = c
+                            break
+
+                    if species_color is None:
+                        print(f"Error: No color found for {species}")
 
 
-                draw.rectangle([(xtl, ytl), (xbr, ybr)], outline=species_color.text)
+                    draw.rectangle([(xtl, ytl), (xbr, ybr)], outline=species_color.text)
 
                 # Save the modified image with annotations
                 modifier = 0
@@ -146,6 +164,7 @@ for annotation in annotations_data:
         print(f"An error occurred: {e}")
 
 
+print(f"Done with {len(annotations_data)} images")
 
 # Step 3: Analysis and Insights
 # You can analyze patterns, behavior, and other insights based on the visualized annotations.
