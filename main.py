@@ -1,6 +1,6 @@
 import itertools
 import os
-import xml.etree.ElementTree as ET
+from xml.etree.ElementTree import parse
 import zipfile
 from PIL import Image, ImageDraw
 
@@ -34,7 +34,7 @@ for zip_file in os.listdir(annotation_folder):
                 # Extract the file to a temporary location
                 zip_ref.extract(file, temp_path)
 
-                tree = ET.parse(os.path.join(temp_path, file))
+                tree = parse(os.path.join(temp_path, file))
                 root = tree.getroot()
 
                 labels = root.find(".//labels")
@@ -137,21 +137,13 @@ for annotation in annotations_data:
                         print(f"Error: No color found for {species}")
 
 
-                    draw.rectangle([(xtl, ytl), (xbr, ybr)], outline=species_color.text)
+                    draw.rectangle([(xtl, ytl), (xbr, ybr)], outline=species_color.text, width=3)
 
                 # Save the modified image with annotations
-                modifier = 0
                 annotated_image_path = modified_image_path + f"frame_{frame_number:06d}-{zip_path.split('-')[1]}.png"
 
                 while os.path.exists(annotated_image_path):
-
-                    modifier += 1
-
-                    annotated_image_path = annotated_image_path.removesuffix(".png")
-
-                    annotated_image_path = annotated_image_path.removesuffix(f"({modifier-1})")
-
-                    annotated_image_path += f"({modifier}).png"
+                    print(f"Replaced {annotated_image_path}")
 
 
                 image.save(annotated_image_path)
