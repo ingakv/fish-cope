@@ -4,10 +4,10 @@ from xml.etree.ElementTree import parse
 import zipfile
 from PIL import Image, ImageDraw
 
-#annotation_folder = "../ANADROM/Annotation/"
+annotation_folder = "../ANADROM/Annotation/"
 
 # Test folder with a small subset of the original footage
-annotation_folder = "test_images/"
+#annotation_folder = "test_images/"
 
 annotations_data = []
 species_data = []
@@ -142,7 +142,7 @@ for annotation in annotations_data:
                 # Save the modified image with annotations
                 annotated_image_path = modified_image_path + f"frame_{frame_number:06d}-{zip_path.split('-')[1]}.png"
 
-                while os.path.exists(annotated_image_path):
+                if os.path.exists(annotated_image_path):
                     print(f"Replaced {annotated_image_path}")
 
 
