@@ -2,7 +2,7 @@ import itertools
 import os
 from xml.etree.ElementTree import parse
 import zipfile
-from PIL import Image, ImageDraw
+from PIL import Image
 
 annotation_folder = "../ANADROM/Annotation/"
 
@@ -91,11 +91,9 @@ for annotation in annotations_data:
     zip_path, frame_number, fish_group = annotation
 
     # Add all the species and their box color in the current xml
-    for elem in species_data:
-        species_zip_path, _, _ = elem
+    for species_zip_path, fish_species, _ in species_data:
         if species_zip_path == zip_path:
-            _, fish_species, color = elem
-            all_species.append((fish_species, color))
+            all_species.append(fish_species)
 
 
     image_path = os.path.join(annotation_folder, zip_path)
@@ -120,33 +118,36 @@ for annotation in annotations_data:
             if os.path.exists(temp_path + image_file):
                 image = Image.open(temp_path + image_file)
 
-                for _, species, (xtl, ytl, xbr, ybr) in fish_group:
 
-                    # Draw the box around the fish
-                    draw = ImageDraw.Draw(image)
+                for _, species, coordinates in fish_group:
 
-                    # Default to None if the species is not found
-                    species_color = None
+                    cropped_image = image.crop(coordinates)
 
-                    for s, c in all_species:
-                        if s.text == species:
-                            species_color = c
-                            break
+                    # Save the modified image with annotations
+                    folder_path = modified_image_path + f"{species}/"
 
-                    if species_color is None:
-                        print(f"Error: No color found for {species}")
+                    if not os.path.exists(folder_path):
+                        os.makedirs(folder_path)
 
 
-                    draw.rectangle([(xtl, ytl), (xbr, ybr)], outline=species_color.text, width=3)
+                    cropped_image_path = folder_path + f"/frame_{frame_number:06d}-{zip_path.split('-')[1]}.png"
 
-                # Save the modified image with annotations
-                annotated_image_path = modified_image_path + f"frame_{frame_number:06d}-{zip_path.split('-')[1]}.png"
+                    modifier = 0
+                    while os.path.exists(cropped_image_path):
+                        modifier += 1
 
-                if os.path.exists(annotated_image_path):
-                    print(f"Replaced {annotated_image_path}")
+                        cropped_image_path = cropped_image_path.removesuffix(".png")
+
+                        cropped_image_path = cropped_image_path.removesuffix(f"({modifier - 1})")
+
+                        cropped_image_path += f"({modifier}).png"
 
 
-                image.save(annotated_image_path)
+                    cropped_image.save(cropped_image_path)
+
+#                if os.path.exists(annotated_image_path):
+#                    print(f"Replaced {annotated_image_path}")
+
 
             # Remove the extracted file after processing
             os.remove(temp_path + image_file)
@@ -156,7 +157,12 @@ for annotation in annotations_data:
         print(f"An error occurred: {e}")
 
 
-print(f"Done with {len(annotations_data)} images")
+
+total_files = 0
+for _, _, filenames in os.walk(modified_image_path):
+     total_files += len(filenames)
+
+print(f"Done with {total_files} images")
 
 # Step 3: Analysis and Insights
 # You can analyze patterns, behavior, and other insights based on the visualized annotations.
