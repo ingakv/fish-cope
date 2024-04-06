@@ -1,4 +1,5 @@
 import os
+import shutil
 import zipfile
 import xml.etree.ElementTree as ET
 
@@ -58,3 +59,12 @@ if __name__ == "__main__":
 
     # Convert to YOLO-NAS format
     convert_to_yolo(xml_file, images_folder, output_folder)
+
+    files = os.listdir(images_folder)
+
+    # iterating over all the files in
+    # the source directory
+    for fname in files:
+        # copying the files to the
+        # destination directory
+        shutil.copy2(os.path.join(images_folder, fname), output_folder)
