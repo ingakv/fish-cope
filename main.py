@@ -3,6 +3,13 @@ import shutil
 import zipfile
 import xml.etree.ElementTree as ET
 
+def label_to_int(str):
+    if str == "SEATROUT": return 0
+    elif str == "SMOLT": return 1
+    elif str == "SALMON": return 2
+    elif str == "SEACHAR": return 3
+    return 4
+
 
 def unzip_files(zip_file, extract_folder):
     # Create extract folder if it doesn't exist
@@ -22,7 +29,7 @@ def convert_to_yolo(xml_file, images_folder, output_folder):
     # Iterate through each track in XML
     for track in root.findall('track'):
         track_id = track.attrib['id']
-        label = track.attrib['label']
+        label = label_to_int(track.attrib['label'])
 
         # Iterate through each box in the track
         for box in track.findall('box'):
