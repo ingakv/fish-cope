@@ -1,0 +1,20 @@
+# Dataset directory
+path: ../data
+
+# Training images
+train: train/images/
+
+# Validation images
+val: val/images/
+
+# Number of classes
+nc: 6
+
+# Classes
+names:
+  0: 'SEACHAR'
+  1: 'SALMON'
+  2: 'SMOLT'
+  3: 'SEATROUT'
+  4: 'PINK-SALMON'
+  5: 'OTHER'
